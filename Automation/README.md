@@ -1,6 +1,6 @@
 # Automation
 
-Imperative scripts, operational tooling, audits, CI helpers, and rollout automation.
+Public automation samples and non-sensitive helpers.
 
 ```
 Automation/
@@ -14,4 +14,4 @@ Automation/
 └── ubuntu-app-host-ops/
 ```
 
-Public / non-sensitive automation scripts belong here.
+Production / private scripts live in **Internal-Citadel**.
