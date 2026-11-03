@@ -1,5 +1,8 @@
-# Application
+# Application (Public Samples)
 
-Runnable services, APIs, dashboards, CLI tools, and business applications.
+```
+Application/
+└── python/   # Python app samples from Python_apps
+```
 
-Public samples and non-sensitive application code belong here.
+Non-sensitive application samples only. Private apps stay in Internal-Citadel.
