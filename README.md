@@ -1,25 +1,21 @@
 # External-Citadel
 
-**Public** Citadel platform monorepo.
-
-Organized by four top-level domains for clear access and discoverability.
+Public Citadel platform monorepo — shareable samples and non-sensitive content.
 
 ## Structure
 
 ```
 External-Citadel/
-├── Application/                 # Runnable services, APIs, dashboards, business apps
-├── Infrastructure/              # Declarative IaC + platform foundations (AWS, Azure, GCP, Kubernetes)
-├── Automation/                  # Imperative scripts, ops tooling, CI helpers, audits
-└── Artificial-Intelligence/     # AI platforms, agents, RAG, guardrails, knowledge bases
+├── Application/
+├── Infrastructure/
+├── Automation/
+│   └── aws/ops/   ← public patching rollout sample
+└── Artificial-Intelligence/
 ```
 
-## Purpose
-
-Public-facing content, samples, non-sensitive scripts, and documentation.
-Sensitive or internal-only material lives in the private **Internal-Citadel** repository.
+Private / production content lives in **Internal-Citadel**.
 
 ## Related
 
-- Private counterpart: [Internal-Citadel](https://github.com/Findefra/Internal-Citadel)
-- Legacy: [citadel-platform](https://github.com/Findefra/citadel-platform) (migration in progress)
+- [Internal-Citadel](https://github.com/Findefra/Internal-Citadel) (private)
+- Legacy: [Automation_Scripts](https://github.com/Findefra/Automation_Scripts)

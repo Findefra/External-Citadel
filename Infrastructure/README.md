@@ -1,6 +1,6 @@
-# Infrastructure
+# Infrastructure (Public Samples)
 
-Declarative infrastructure-as-code and platform foundations.
+Public infrastructure samples and non-sensitive reference layouts.
 
 ```
 Infrastructure/
@@ -9,4 +9,4 @@ Infrastructure/
 └── kubernetes/
 ```
 
-Public landing-zone samples and non-sensitive IaC live here.
+Production landing zones, EKS/AKS, and network hubs live in **Internal-Citadel**.

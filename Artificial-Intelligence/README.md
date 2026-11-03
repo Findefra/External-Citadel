@@ -1,11 +1,5 @@
-# Artificial Intelligence
+# Artificial Intelligence (Public Samples)
 
-AI platforms, agents, RAG pipelines, guardrails, and knowledge bases.
+Public AI samples and non-sensitive reference material.
 
-```
-Artificial-Intelligence/
-├── azure/
-└── aws/
-```
-
-Public samples and non-sensitive AI content belong here.
+Production Bedrock, Azure AI Foundry, and enterprise AI stacks live in **Internal-Citadel**.
