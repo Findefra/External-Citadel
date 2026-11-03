@@ -1,3 +1,3 @@
-# AWS Audits (Read-Only)
+# AWS Audits (Public Samples)
 
-Public sample / non-sensitive quarterly inventory and compliance scripts.
+Non-sensitive sample scripts. Full production audit suite lives in the private **Internal-Citadel** repository.
