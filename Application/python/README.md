@@ -1,14 +1,25 @@
 # Python Application Samples (Public)
 
-Inventory migrated from `Findefra/Python_apps`:
+Migrated from `Findefra/Python_apps`.
 
-| Sample | Description |
-|--------|-------------|
-| AWS Resource Tagging & Compliance Checker | CLI + report for tag compliance |
-| FastAPI Service – Launch Hardened Windows / RHEL | Instance launch service |
-| Image Builder Pipeline Trigger & Status CLI | Trigger/status for Image Builder |
-| Lightweight ML Inference Service | FastAPI + scikit-learn / ONNX |
-| Streamlit Dashboard – AWS CI/CD + Image Builder | Overview dashboard |
-| Common_API_List | API reference notes |
+| File | Description |
+|------|-------------|
+| `aws_tag_compliance_checker.py` | EC2/RDS/S3 required-tag compliance → CSV |
+| `fastapi_instance_launcher.py` | FastAPI: launch hardened Windows/RHEL from Image Builder AMIs |
+| `imagebuilder_cli.py` | Click CLI: list/trigger/status Image Builder pipelines |
+| `ml_inference_service.py` | FastAPI + scikit-learn demo inference |
+| `streamlit_platform_dashboard.py` | Streamlit overview of Image Builder + CodePipeline |
 
-Script bodies can be expanded from the source repo as needed. Production platform code lives in **Internal-Citadel**.
+```bash
+python -m venv .venv && source .venv/bin/activate
+pip install -r requirements.txt
+
+# examples
+python aws_tag_compliance_checker.py --output tags.csv
+uvicorn fastapi_instance_launcher:app --reload
+python imagebuilder_cli.py list-pipelines
+uvicorn ml_inference_service:app --reload
+streamlit run streamlit_platform_dashboard.py
+```
+
+Production platform automation lives in **Internal-Citadel**.
