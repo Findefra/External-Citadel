@@ -1,8 +1,5 @@
 # Application (Public Samples)
 
-```
-Application/
-└── python/   # Python app samples from Python_apps
-```
+Placeholder for application-layer samples (services, APIs, UIs).
 
-Non-sensitive application samples only. Private apps stay in Internal-Citadel.
+Python tooling samples live under **`Automation/python/`** (canonical path aligned with Internal-Citadel).
