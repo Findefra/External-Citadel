@@ -6,15 +6,15 @@ Public Citadel platform monorepo — shareable samples and non-sensitive content
 
 ```
 External-Citadel/
-├── Application/                 # app-layer samples (placeholder)
+├── Application/
+│   └── python/                  # Python app samples (from Python_apps)
 ├── Infrastructure/
 │   ├── aws/samples/
 │   ├── azure/samples/
 │   ├── gcp/
 │   └── kubernetes/samples/
 ├── Automation/
-│   ├── aws/ops/
-│   └── python/                  # Python samples (from Python_apps)
+│   └── aws/ops/                 # ASG patch rollout sample
 └── Artificial-Intelligence/
     └── azure/ado-agent-ops/
 ```

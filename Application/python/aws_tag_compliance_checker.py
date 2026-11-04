@@ -25,7 +25,6 @@ def check_tags(tags: list[dict] | None) -> list[str]:
 def main(output: str):
     results = []
 
-    # EC2
     for reservation in ec2.describe_instances()["Reservations"]:
         for inst in reservation["Instances"]:
             missing = check_tags(inst.get("Tags"))
@@ -37,7 +36,6 @@ def main(output: str):
                     "Region": boto3.Session().region_name
                 })
 
-    # RDS
     for db in rds.describe_db_instances()["DBInstances"]:
         results.append({
             "Service": "RDS",
@@ -46,7 +44,6 @@ def main(output: str):
             "Region": boto3.Session().region_name
         })
 
-    # S3
     for bucket in s3.list_buckets()["Buckets"]:
         name = bucket["Name"]
         try:

@@ -1,5 +1,8 @@
-# Application (Public Samples)
+# Application
 
-Placeholder for application-layer samples (services, APIs, UIs).
+```
+Application/
+└── python/     # Python app samples (FastAPI, Streamlit, CLI, ML)
+```
 
-Python tooling samples live under **`Automation/python/`** (canonical path aligned with Internal-Citadel).
+Canonical public path: **`Application/python/`**
