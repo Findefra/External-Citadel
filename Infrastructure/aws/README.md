@@ -1,3 +1,7 @@
-# Infrastructure / aws
+# Infrastructure / AWS (Public Samples)
 
-Public AWS platform samples and non-sensitive IaC.
+Public non-sensitive AWS samples and pointers.
+
+Production EKS, network-hub, three-tier, and static-site stacks live in **Internal-Citadel**.
+
+Legacy source repos: `AWS_Infra`, `AWS_Ai`.

@@ -1,3 +1,5 @@
-# Artificial-Intelligence / aws
+# Artificial Intelligence / AWS (Public Samples)
 
-Public AWS / Bedrock samples.
+Public AWS AI sample pointers. Production Bedrock stacks live in **Internal-Citadel**.
+
+Legacy source: `AWS_Ai`.

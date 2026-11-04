@@ -1,3 +1,5 @@
-# Infrastructure / kubernetes
+# Infrastructure / Kubernetes (Public Samples)
 
-Public Kubernetes manifests, patterns, and examples.
+Public k8s sample notes. Day-2 ops scripts inventory is in Internal-Citadel under `Infrastructure/kubernetes/ops/`.
+
+Legacy source: `Kubernetes_Enviro`.
