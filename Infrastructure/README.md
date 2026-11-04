@@ -1,12 +1,14 @@
 # Infrastructure (Public Samples)
 
-Public infrastructure samples and non-sensitive reference layouts.
-
 ```
 Infrastructure/
 ├── aws/
+│   └── samples/
 ├── azure/
+│   └── samples/          # NSG auditor, storage hardening
+├── gcp/                  # skeleton / roadmap
 └── kubernetes/
+    └── samples/          # Deployment, HPA, StatefulSet
 ```
 
-Production landing zones, EKS/AKS, and network hubs live in **Internal-Citadel**.
+Production landing zones and private clusters live in **Internal-Citadel**.
