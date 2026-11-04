@@ -1,5 +1,5 @@
 # Moved
 
-Python samples were relocated to the canonical path:
+Python samples live at the canonical path:
 
-→ **`Automation/python/`**
+**→ [`Automation/python/`](../../Automation/python/)**

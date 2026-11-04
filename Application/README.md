@@ -1,5 +1,5 @@
 # Application
 
-Application-layer samples placeholder.
+Application-layer placeholder.
 
-Python samples live under **`Automation/python/`** (aligned with Internal-Citadel).
+Python samples: **[`Automation/python/`](../Automation/python/)**
