@@ -1,8 +1,5 @@
 # Application
 
-```
-Application/
-└── python/     # Python app samples (FastAPI, Streamlit, CLI, ML)
-```
+Application-layer samples placeholder.
 
-Canonical public path: **`Application/python/`**
+Python samples live under **`Automation/python/`** (aligned with Internal-Citadel).

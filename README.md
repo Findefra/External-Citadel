@@ -7,14 +7,14 @@ Public Citadel platform monorepo — shareable samples and non-sensitive content
 ```
 External-Citadel/
 ├── Application/
-│   └── python/                  # Python app samples (from Python_apps)
 ├── Infrastructure/
 │   ├── aws/samples/
 │   ├── azure/samples/
 │   ├── gcp/
 │   └── kubernetes/samples/
 ├── Automation/
-│   └── aws/ops/                 # ASG patch rollout sample
+│   ├── aws/ops/
+│   └── python/                  # Python samples (from Python_apps)
 └── Artificial-Intelligence/
     └── azure/ado-agent-ops/
 ```
