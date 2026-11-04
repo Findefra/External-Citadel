@@ -1,12 +1,16 @@
 # Kubernetes samples (public)
 
-Learning / reference manifests from `Findefra/Kubernetes_Enviro`.
+From `Findefra/Kubernetes_Enviro`.
 
 ```
 samples/
-├── stateless-webapp/     # zero-downtime RollingUpdate Deployment
-├── hpa-autoscaling/      # HPA v2 with scale policies
-└── stateful-database/    # Postgres StatefulSet + PVC template
+├── stateless-webapp/
+├── hpa-autoscaling/
+├── stateful-database/
+├── ingress-microservices/
+├── sidecar-pattern/
+├── pdb-affinity/
+└── resource-quotas/
 ```
 
-Day-2 ops scripts live in **Internal-Citadel** `Infrastructure/kubernetes/ops/`.
+Day-2 ops scripts: **Internal-Citadel** `Infrastructure/kubernetes/ops/`.

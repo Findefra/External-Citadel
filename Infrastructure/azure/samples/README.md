@@ -1,10 +1,12 @@
 # Azure infrastructure samples (public)
 
-Non-sensitive ops helpers from `Findefra/Azure_Infra`.
+From `Findefra/Azure_Infra`.
 
 | File | Purpose |
 |------|--------|
-| `nsg-risky-rule-auditor.ps1` | Find Internet-open / high-risk NSG rules |
-| `storage-hardening-sweep.ps1` | HTTPS-only, TLS1.2, no public blobs, soft-delete |
+| `nsg-risky-rule-auditor.ps1` | Internet-open / high-risk NSG rules |
+| `storage-hardening-sweep.ps1` | HTTPS, TLS1.2, no public blobs |
+| `cost-anomaly-detector.ps1` | 30d vs prior 30d spend delta |
+| `policy-noncompliant-export.ps1` | Non-compliant policy resources → CSV |
 
-Additional Azure DevOps pipeline helpers remain in the source repo. Production AKS stacks live in **Internal-Citadel**.
+Production AKS stacks: **Internal-Citadel**.

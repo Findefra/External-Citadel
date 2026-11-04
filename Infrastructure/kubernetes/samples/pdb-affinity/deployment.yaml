@@ -1,0 +1,74 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ha-app
+  labels:
+    app: ha-app
+spec:
+  replicas: 4
+  selector:
+    matchLabels:
+      app: ha-app
+  template:
+    metadata:
+      labels:
+        app: ha-app
+    spec:
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            podAffinityTerm:
+              labelSelector:
+                matchLabels:
+                  app: ha-app
+              topologyKey: kubernetes.io/hostname
+      topologySpreadConstraints:
+      - maxSkew: 1
+        topologyKey: topology.kubernetes.io/zone
+        whenUnsatisfiable: ScheduleAnyway
+        labelSelector:
+          matchLabels:
+            app: ha-app
+      containers:
+      - name: app
+        image: nginx:1.25-alpine
+        ports:
+        - containerPort: 80
+        resources:
+          requests:
+            cpu: "50m"
+            memory: "32Mi"
+          limits:
+            cpu: "200m"
+            memory: "64Mi"
+        readinessProbe:
+          httpGet:
+            path: /
+            port: 80
+          initialDelaySeconds: 5
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: ha-app-pdb
+  labels:
+    app: ha-app
+spec:
+  minAvailable: 2
+  selector:
+    matchLabels:
+      app: ha-app
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ha-app
+  labels:
+    app: ha-app
+spec:
+  selector:
+    app: ha-app
+  ports:
+  - port: 80
+    targetPort: 80
