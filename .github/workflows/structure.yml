@@ -1,0 +1,58 @@
+name: Structure Guard
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: structure-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  structure:
+    name: Enforce monorepo layout
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Check top-level domains (warning-only)
+        run: |
+          set -uo pipefail
+          allowed="Application Infrastructure Automation Artificial-Intelligence"
+          echo "Allowed top-level directories: $allowed"
+
+          mapfile -t dirs < <(find . -maxdepth 1 -mindepth 1 -type d ! -name '.*' -printf '%f\n' | sort)
+
+          echo "Found top-level directories:"
+          printf '  - %s\n' "${dirs[@]}"
+
+          failed=0
+          for d in "${dirs[@]}"; do
+            if ! echo "$allowed" | grep -qw "$d"; then
+              echo "::warning::Unexpected top-level directory: $d (only Application, Infrastructure, Automation, Artificial-Intelligence are allowed)"
+              failed=1
+            fi
+          done
+
+          if [[ $failed -eq 0 ]]; then
+            echo "Top-level structure OK"
+          else
+            echo "Structure warnings emitted (non-blocking)"
+          fi
+
+      - name: Require README.md in domain roots (warning-only)
+        run: |
+          set -uo pipefail
+          for domain in Application Infrastructure Automation Artificial-Intelligence; do
+            if [[ ! -f "$domain/README.md" ]]; then
+              echo "::warning::Missing $domain/README.md"
+            else
+              echo "✓ $domain/README.md"
+            fi
+          done
