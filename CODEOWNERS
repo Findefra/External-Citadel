@@ -1,0 +1,14 @@
+# External-Citadel CODEOWNERS
+# Default owner for everything in this public monorepo
+*       @Findefra
+
+# Domain-level ownership (same owner for now — expand later if needed)
+/Application/               @Findefra
+/Infrastructure/            @Findefra
+/Automation/                @Findefra
+/Artificial-Intelligence/   @Findefra
+
+# CI and repo meta
+/.github/                   @Findefra
+/CODEOWNERS                 @Findefra
+/README.md                  @Findefra
