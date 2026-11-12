@@ -14,12 +14,25 @@ External-Citadel/
 │   └── kubernetes/samples/
 ├── Automation/
 │   ├── aws/ops/
-│   └── python/                  # Python samples (from Python_apps)
+│   └── python/
 └── Artificial-Intelligence/
     └── azure/ado-agent-ops/
 ```
 
-Private / production content lives in **Internal-Citadel**.
+## Where to put new code
+
+| You are adding… | Put it in |
+|-----------------|----------|
+| A sample app or utility (non-sensitive) | `Application/` |
+| Public Terraform samples / patterns | `Infrastructure/<cloud>/samples/` |
+| Shareable scripts or Python utilities | `Automation/` |
+| Public AI / agent ops samples | `Artificial-Intelligence/` |
+
+**Rules of thumb**
+- No secrets, account IDs, or production-only config.
+- Prefer samples that another engineer can run with minimal setup.
+- Private / production content belongs in [Internal-Citadel](https://github.com/Findefra/Internal-Citadel).
+- Every new module folder should include a short `README.md`.
 
 ## CI
 
@@ -36,4 +49,4 @@ See [`.github/workflows/`](.github/workflows/).
 ## Related
 
 - [Internal-Citadel](https://github.com/Findefra/Internal-Citadel) (private)
-- Legacy: [Automation_Scripts](https://github.com/Findefra/Automation_Scripts), [Python_apps](https://github.com/Findefra/Python_apps) (migrated — archive when ready)
+- Portfolio: [fde-portfolio](https://github.com/Findefra/fde-portfolio)
