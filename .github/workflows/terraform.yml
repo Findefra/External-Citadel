@@ -1,0 +1,114 @@
+name: Terraform
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '**/*.tf'
+      - '**/*.tfvars'
+      - '**/.terraform.lock.hcl'
+      - '.github/workflows/terraform.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - '**/*.tf'
+      - '**/*.tfvars'
+      - '**/.terraform.lock.hcl'
+      - '.github/workflows/terraform.yml'
+
+permissions:
+  contents: read
+  security-events: write
+
+concurrency:
+  group: terraform-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  fmt:
+    name: Format
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.9.8"
+          terraform_wrapper: false
+
+      - name: Terraform Format Check
+        run: terraform fmt -check -recursive -diff
+
+  validate:
+    name: Validate
+    runs-on: ubuntu-latest
+    needs: fmt
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.9.8"
+          terraform_wrapper: false
+
+      - name: Discover Terraform roots & Validate
+        run: |
+          set -euo pipefail
+          roots=$(find . -name '*.tf' -not -path './.git/*' -printf '%h\n' | sort -u | sed 's|^\./||' || true)
+          if [[ -z "$roots" ]]; then
+            echo "No Terraform roots found — skipping validate"
+            exit 0
+          fi
+          echo "Found roots:"
+          echo "$roots"
+          while IFS= read -r dir; do
+            echo "=== Validating $dir ==="
+            (
+              cd "$dir"
+              terraform init -backend=false -input=false
+              terraform validate -no-color
+            )
+          done <<< "$roots"
+
+  tflint:
+    name: TFLint
+    runs-on: ubuntu-latest
+    needs: fmt
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup TFLint
+        uses: terraform-linters/setup-tflint@v4
+        with:
+          tflint_version: latest
+
+      - name: Init TFLint plugins
+        run: tflint --init
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+
+      - name: Run TFLint (recursive)
+        run: tflint --recursive --format compact
+
+  checkov:
+    name: Checkov
+    runs-on: ubuntu-latest
+    needs: fmt
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Run Checkov
+        uses: bridgecrewio/checkov-action@v12
+        with:
+          directory: .
+          framework: terraform
+          soft_fail: true
+          output_format: cli
+          skip_check: CKV_TF_1
+          quiet: false
