@@ -1,13 +1,13 @@
 <#
 .SYNOPSIS
-    Windows-native application error recovery script.
+    Windows-native application error recovery script with structured logging.
     Scans Event Logs (and optional custom log files) for errors, then restarts
     the affected Windows service and any configured dependent services.
 
 .DESCRIPTION
     100% PowerShell implementation designed for Windows Server environments.
     Uses Get-WinEvent, Get-Service, and Restart-Service.
-    Supports dry-run, configurable lookback, and explicit service targeting.
+    All actions are written to both the console and a daily rotating log file.
 
 .PARAMETER DryRun
     Show actions without making changes.
@@ -18,6 +18,9 @@
 .PARAMETER Service
     One or more specific service names to check. If omitted, all services
     defined in $ServiceDeps are processed.
+
+.PARAMETER LogDir
+    Directory for log files (default: C:\Logs\AppErrorRecovery).
 
 .EXAMPLE
     .\App-Error-Recovery.ps1 -DryRun
@@ -35,7 +38,8 @@ param(
     [switch]$DryRun,
     [ValidateRange(1, 1440)]
     [int]$Minutes = 30,
-    [string[]]$Service
+    [string[]]$Service,
+    [string]$LogDir = 'C:\Logs\AppErrorRecovery'
 )
 
 Set-StrictMode -Version Latest
@@ -45,7 +49,6 @@ $ErrorActionPreference = 'Stop'
 # CONFIGURATION - Customize for your environment
 # ------------------------------------------------------------
 
-# Case-insensitive regex fragments that indicate a problem
 $ErrorPatterns = @(
     'error',
     'exception',
@@ -61,43 +64,56 @@ $ErrorPatterns = @(
     'stack overflow'
 )
 
-# Primary Windows service name -> array of dependent service names
-# Use the exact Name property from Get-Service
 $ServiceDeps = [ordered]@{
     'PaymentApi'          = @('PaymentWorker', 'PaymentCache')
     'OrderService'        = @('OrderWorker', 'InventorySync')
     'AuthService'         = @('SessionStore')
     'NotificationService' = @()
-    # Add more entries as needed
 }
 
-# Optional custom application log files (scanned in addition to Event Log)
 $CustomLogs = @{
     # 'PaymentApi' = 'C:\Logs\PaymentApi\app.log'
 }
 
-# Event Log names to query
 $EventLogNames = @('Application', 'System')
 
 # ------------------------------------------------------------
-# Helpers
+# Logging setup
 # ------------------------------------------------------------
+
+if (-not (Test-Path -LiteralPath $LogDir)) {
+    New-Item -ItemType Directory -Path $LogDir -Force | Out-Null
+}
+
+$LogFile = Join-Path $LogDir ("AppErrorRecovery_{0:yyyyMMdd}.log" -f (Get-Date))
 
 function Write-Log {
     param(
-        [Parameter(Mandatory)][ValidateSet('INFO','WARN','ERROR','DRY-RUN')]
+        [Parameter(Mandatory)][ValidateSet('INFO','WARN','ERROR','DRY-RUN','DEBUG')]
         [string]$Level,
         [Parameter(Mandatory)][string]$Message
     )
+
     $ts = Get-Date -Format 'yyyy-MM-dd HH:mm:ss'
+    $line = "[$ts] [$Level] $Message"
+
+    # Console with color
     $color = switch ($Level) {
         'INFO'    { 'White' }
         'WARN'    { 'Yellow' }
         'ERROR'   { 'Red' }
         'DRY-RUN' { 'Cyan' }
+        'DEBUG'   { 'Gray' }
     }
-    Write-Host "[$ts] [$Level] $Message" -ForegroundColor $color
+    Write-Host $line -ForegroundColor $color
+
+    # File (always)
+    Add-Content -LiteralPath $LogFile -Value $line -Encoding UTF8
 }
+
+# ------------------------------------------------------------
+# Helpers
+# ------------------------------------------------------------
 
 function Test-ServiceHasErrors {
     param(
@@ -108,19 +124,18 @@ function Test-ServiceHasErrors {
     $startTime = (Get-Date).AddMinutes(-$LookbackMinutes)
     $pattern   = ($ErrorPatterns -join '|')
 
-    # --- Windows Event Log ---
     try {
         $filter = @{
             LogName   = $EventLogNames
             StartTime = $startTime
-            Level     = 1, 2, 3   # Critical, Error, Warning
+            Level     = 1, 2, 3
         }
 
         $events = Get-WinEvent -FilterHashtable $filter -ErrorAction SilentlyContinue |
             Where-Object {
                 ($_.Message -match $pattern) -or
                 ($_.ProviderName -like "*$ServiceName*") -or
-                ($_.Id -in 1000, 1001, 1002)  # common application error event IDs
+                ($_.Id -in 1000, 1001, 1002)
             }
 
         if ($events -and $events.Count -gt 0) {
@@ -132,7 +147,6 @@ function Test-ServiceHasErrors {
         Write-Log -Level 'WARN' -Message "Event Log query limited or failed: $($_.Exception.Message)"
     }
 
-    # --- Optional custom log file ---
     if ($CustomLogs.ContainsKey($ServiceName)) {
         $logPath = $CustomLogs[$ServiceName]
         if (Test-Path -LiteralPath $logPath) {
@@ -167,7 +181,6 @@ function Restart-WindowsServiceSafe {
             Start-Service -Name $Name -ErrorAction Stop
         }
 
-        # Wait and verify
         $timeout = 30
         $elapsed = 0
         do {
@@ -192,7 +205,12 @@ function Restart-WindowsServiceSafe {
 # Main
 # ------------------------------------------------------------
 
-Write-Log -Level 'INFO' -Message "Windows App Error Recovery starting (lookback = ${Minutes} min)"
+Write-Log -Level 'INFO' -Message "============================================================"
+Write-Log -Level 'INFO' -Message "Windows App Error Recovery started"
+Write-Log -Level 'INFO' -Message "Log file : $LogFile"
+Write-Log -Level 'INFO' -Message "Lookback : ${Minutes} minute(s)"
+Write-Log -Level 'INFO' -Message "DryRun   : $DryRun"
+
 if ($DryRun) {
     Write-Log -Level 'INFO' -Message 'DRY-RUN mode enabled – no services will be restarted'
 }
@@ -211,11 +229,9 @@ foreach ($svcName in $targets) {
     if (Test-ServiceHasErrors -ServiceName $svcName -LookbackMinutes $Minutes) {
         Write-Log -Level 'WARN' -Message "Errors detected for $svcName – initiating recovery"
 
-        # Primary service
         Restart-WindowsServiceSafe -Name $svcName
         $restarted.Add($svcName)
 
-        # Dependents
         foreach ($dep in $ServiceDeps[$svcName]) {
             if ([string]::IsNullOrWhiteSpace($dep)) { continue }
             Write-Log -Level 'INFO' -Message "Restarting dependent: $dep"
@@ -228,7 +244,6 @@ foreach ($svcName in $targets) {
     }
 }
 
-Write-Host ''
 Write-Log -Level 'INFO' -Message '===== Recovery Summary ====='
 if ($restarted.Count -eq 0) {
     Write-Log -Level 'INFO' -Message 'No services required a restart'
@@ -240,5 +255,8 @@ else {
 if ($DryRun) {
     Write-Log -Level 'INFO' -Message 'Dry-run complete. Re-run without -DryRun to apply changes.'
 }
+
+Write-Log -Level 'INFO' -Message "Windows App Error Recovery finished"
+Write-Log -Level 'INFO' -Message "============================================================"
 
 exit 0

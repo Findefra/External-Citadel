@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# app-error-recovery.sh  (Red Hat / RHEL / CentOS Stream / Rocky / Alma specialized)
+# app-error-recovery.sh  (Red Hat / RHEL / CentOS Stream / Rocky / Alma + structured logging)
 # Scans journalctl and application logs for errors, then restarts the systemd
 # service and any defined dependent services.
 #
@@ -11,7 +11,7 @@
 #   - firewalld is not touched by this script
 #
 # Usage:
-#   sudo ./app-error-recovery.sh [--dry-run] [--minutes 30] [service ...]
+#   sudo ./app-error-recovery.sh [--dry-run] [--minutes 30] [--log-dir DIR] [service ...]
 #
 # Examples:
 #   sudo ./app-error-recovery.sh --dry-run
@@ -25,6 +25,7 @@ set -euo pipefail
 # ------------------------------------------------------------
 
 LOOKBACK_MINUTES=30
+LOG_DIR="/var/log/app-error-recovery"
 
 ERROR_PATTERNS=(
     "error"
@@ -39,10 +40,9 @@ ERROR_PATTERNS=(
     "failed to"
     "segfault"
     "oom-killer"
-    "AVC denied"          # useful SELinux signal
+    "AVC denied"
 )
 
-# primary -> comma-separated dependents (unit names without .service)
 declare -A SERVICE_DEPS=(
     ["payment-api"]="payment-worker,payment-cache"
     ["order-service"]="order-worker,inventory-sync"
@@ -55,7 +55,7 @@ declare -A CUSTOM_LOGS=(
 )
 
 # ------------------------------------------------------------
-# Internals
+# Argument parsing
 # ------------------------------------------------------------
 
 DRY_RUN=false
@@ -65,8 +65,9 @@ while [[ $# -gt 0 ]]; do
     case "$1" in
         --dry-run)   DRY_RUN=true; shift ;;
         --minutes)   LOOKBACK_MINUTES="$2"; shift 2 ;;
+        --log-dir)   LOG_DIR="$2"; shift 2 ;;
         -h|--help)
-            echo "Usage: $0 [--dry-run] [--minutes N] [service ...]"
+            echo "Usage: $0 [--dry-run] [--minutes N] [--log-dir DIR] [service ...]"
             exit 0
             ;;
         *) TARGET_SERVICES+=("$1"); shift ;;
@@ -77,10 +78,29 @@ if [[ ${#TARGET_SERVICES[@]} -eq 0 ]]; then
     TARGET_SERVICES=("${!SERVICE_DEPS[@]}")
 fi
 
+# ------------------------------------------------------------
+# Logging setup
+# ------------------------------------------------------------
+
+mkdir -p "$LOG_DIR"
+LOG_FILE="${LOG_DIR}/app-error-recovery-$(date +%Y%m%d).log"
+
 log() {
     local level="$1"; shift
-    printf '[%s] [%s] %s\n' "$(date '+%Y-%m-%d %H:%M:%S')" "$level" "$*"
+    local msg="$*"
+    local line
+    line="$(printf '[%s] [%s] %s' "$(date '+%Y-%m-%d %H:%M:%S')" "$level" "$msg")"
+
+    # Console
+    echo "$line"
+
+    # File
+    echo "$line" >> "$LOG_FILE"
 }
+
+# ------------------------------------------------------------
+# Helpers
+# ------------------------------------------------------------
 
 has_errors() {
     local service="$1"
@@ -88,13 +108,11 @@ has_errors() {
     local patterns
     patterns=$(IFS='|'; echo "${ERROR_PATTERNS[*]}")
 
-    # Primary: journalctl (RHEL systemd)
     if journalctl -u "${service}.service" --since "$since" --no-pager -q 2>/dev/null | \
        grep -Eiq "$patterns"; then
         return 0
     fi
 
-    # Optional custom application log
     if [[ -n "${CUSTOM_LOGS[$service]:-}" && -f "${CUSTOM_LOGS[$service]}" ]]; then
         if grep -Eiq "$patterns" "${CUSTOM_LOGS[$service]}"; then
             return 0
@@ -123,7 +141,6 @@ restart_svc() {
             log "INFO" "${svc}.service is active"
         else
             log "WARN" "${svc}.service failed to become active"
-            # Quick SELinux hint if the unit is failing
             if command -v ausearch &>/dev/null; then
                 log "INFO" "Tip: check recent SELinux denials with: ausearch -m avc -ts recent"
             fi
@@ -138,13 +155,17 @@ restart_svc() {
 # Main
 # ------------------------------------------------------------
 
-log "INFO" "Red Hat App Error Recovery starting (lookback=${LOOKBACK_MINUTES}m)"
-$DRY_RUN && log "INFO" "DRY-RUN mode – no changes will be made"
+log "INFO" "============================================================"
+log "INFO" "Red Hat App Error Recovery started"
+log "INFO" "Log file : $LOG_FILE"
+log "INFO" "Lookback : ${LOOKBACK_MINUTES} minute(s)"
+log "INFO" "DryRun   : $DRY_RUN"
 
-# Light environment awareness
 if [[ -f /etc/redhat-release ]]; then
     log "INFO" "Detected: $(cat /etc/redhat-release)"
 fi
+
+$DRY_RUN && log "INFO" "DRY-RUN mode – no changes will be made"
 
 RESTARTED=()
 
@@ -178,7 +199,6 @@ for service in "${TARGET_SERVICES[@]}"; do
     fi
 done
 
-echo
 log "INFO" "===== Recovery Summary ====="
 if [[ ${#RESTARTED[@]} -eq 0 ]]; then
     log "INFO" "No services required a restart"
@@ -187,5 +207,8 @@ else
 fi
 
 $DRY_RUN && log "INFO" "Dry-run complete. Re-run without --dry-run to apply."
+
+log "INFO" "Red Hat App Error Recovery finished"
+log "INFO" "============================================================"
 
 exit 0
