@@ -1,75 +1,83 @@
 <#
 .SYNOPSIS
-    Scans application / Windows Event logs for errors and restarts the service
-    plus any defined dependent services.
+    Windows-native application error recovery script.
+    Scans Event Logs (and optional custom log files) for errors, then restarts
+    the affected Windows service and any configured dependent services.
 
 .DESCRIPTION
-    Windows equivalent of the Linux app-error-recovery.sh script.
-    - Checks Application and System event logs (or a custom log file)
-    - Looks for configurable error patterns in the recent time window
-    - Restarts the primary Windows service
-    - Restarts any dependent services listed in the configuration
+    100% PowerShell implementation designed for Windows Server environments.
+    Uses Get-WinEvent, Get-Service, and Restart-Service.
+    Supports dry-run, configurable lookback, and explicit service targeting.
 
 .PARAMETER DryRun
-    Show what would be done without making changes.
+    Show actions without making changes.
 
 .PARAMETER Minutes
-    How far back to look in the logs (default: 30).
+    Minutes of Event Log history to examine (default: 30).
 
 .PARAMETER Service
-    Optional list of specific services to check. If omitted, all services
-    defined in $ServiceDeps are checked.
-
-.EXAMPLE
-    .\App-Error-Recovery.ps1
+    One or more specific service names to check. If omitted, all services
+    defined in $ServiceDeps are processed.
 
 .EXAMPLE
     .\App-Error-Recovery.ps1 -DryRun
 
 .EXAMPLE
     .\App-Error-Recovery.ps1 -Minutes 15 -Service "PaymentApi","OrderService"
+
+.NOTES
+    Run elevated (Administrator) for reliable service control and full Event Log access.
+    Edit the CONFIGURATION section before first use.
 #>
 
-[CmdletBinding()]
+[CmdletBinding(SupportsShouldProcess = $true)]
 param(
     [switch]$DryRun,
+    [ValidateRange(1, 1440)]
     [int]$Minutes = 30,
     [string[]]$Service
 )
 
+Set-StrictMode -Version Latest
+$ErrorActionPreference = 'Stop'
+
 # ------------------------------------------------------------
-# CONFIGURATION - Edit this section for your environment
+# CONFIGURATION - Customize for your environment
 # ------------------------------------------------------------
 
-# Error patterns (case-insensitive regex fragments)
+# Case-insensitive regex fragments that indicate a problem
 $ErrorPatterns = @(
-    "error",
-    "exception",
-    "fatal",
-    "critical",
-    "panic",
-    "traceback",
-    "out of memory",
-    "connection refused",
-    "timeout",
-    "failed to"
+    'error',
+    'exception',
+    'fatal',
+    'critical',
+    'panic',
+    'traceback',
+    'out of memory',
+    'connection refused',
+    'timeout',
+    'failed to',
+    'unhandled',
+    'stack overflow'
 )
 
-# Primary service -> comma-separated list of dependent services
-# Use the exact Windows service name (Get-Service | Select Name)
-$ServiceDeps = @{
-    "PaymentApi"          = @("PaymentWorker", "PaymentCache")
-    "OrderService"        = @("OrderWorker", "InventorySync")
-    "AuthService"         = @("SessionStore")
-    "NotificationService" = @()
-    # Add more applications here
+# Primary Windows service name -> array of dependent service names
+# Use the exact Name property from Get-Service
+$ServiceDeps = [ordered]@{
+    'PaymentApi'          = @('PaymentWorker', 'PaymentCache')
+    'OrderService'        = @('OrderWorker', 'InventorySync')
+    'AuthService'         = @('SessionStore')
+    'NotificationService' = @()
+    # Add more entries as needed
 }
 
-# Optional: path to a custom application log file per service
-# If set, the script will also scan that file in addition to Event Log
+# Optional custom application log files (scanned in addition to Event Log)
 $CustomLogs = @{
-    # "PaymentApi" = "C:\Logs\PaymentApi\app.log"
+    # 'PaymentApi' = 'C:\Logs\PaymentApi\app.log'
 }
+
+# Event Log names to query
+$EventLogNames = @('Application', 'System')
 
 # ------------------------------------------------------------
 # Helpers
@@ -77,11 +85,18 @@ $CustomLogs = @{
 
 function Write-Log {
     param(
+        [Parameter(Mandatory)][ValidateSet('INFO','WARN','ERROR','DRY-RUN')]
         [string]$Level,
-        [string]$Message
+        [Parameter(Mandatory)][string]$Message
     )
-    $timestamp = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
-    Write-Host "[$timestamp] [$Level] $Message"
+    $ts = Get-Date -Format 'yyyy-MM-dd HH:mm:ss'
+    $color = switch ($Level) {
+        'INFO'    { 'White' }
+        'WARN'    { 'Yellow' }
+        'ERROR'   { 'Red' }
+        'DRY-RUN' { 'Cyan' }
+    }
+    Write-Host "[$ts] [$Level] $Message" -ForegroundColor $color
 }
 
 function Test-ServiceHasErrors {
@@ -91,53 +106,59 @@ function Test-ServiceHasErrors {
     )
 
     $startTime = (Get-Date).AddMinutes(-$LookbackMinutes)
-    $pattern   = ($ErrorPatterns -join "|")
+    $pattern   = ($ErrorPatterns -join '|')
 
-    # 1. Check Windows Event Log (Application + System)
+    # --- Windows Event Log ---
     try {
-        $events = Get-WinEvent -FilterHashtable @{
-            LogName   = 'Application', 'System'
+        $filter = @{
+            LogName   = $EventLogNames
             StartTime = $startTime
             Level     = 1, 2, 3   # Critical, Error, Warning
-        } -ErrorAction SilentlyContinue |
-        Where-Object {
-            $_.Message -match $pattern -or
-            $_.ProviderName -like "*$ServiceName*"
         }
 
-        if ($events) {
+        $events = Get-WinEvent -FilterHashtable $filter -ErrorAction SilentlyContinue |
+            Where-Object {
+                ($_.Message -match $pattern) -or
+                ($_.ProviderName -like "*$ServiceName*") -or
+                ($_.Id -in 1000, 1001, 1002)  # common application error event IDs
+            }
+
+        if ($events -and $events.Count -gt 0) {
+            Write-Log -Level 'WARN' -Message ("Found {0} matching event(s) for {1}" -f $events.Count, $ServiceName)
             return $true
         }
     }
     catch {
-        # Some systems restrict event log access; continue to custom log
+        Write-Log -Level 'WARN' -Message "Event Log query limited or failed: $($_.Exception.Message)"
     }
 
-    # 2. Optional custom log file
-    if ($CustomLogs.ContainsKey($ServiceName) -and (Test-Path $CustomLogs[$ServiceName])) {
-        $content = Get-Content -Path $CustomLogs[$ServiceName] -Tail 500 -ErrorAction SilentlyContinue
-        if ($content -match $pattern) {
-            return $true
+    # --- Optional custom log file ---
+    if ($CustomLogs.ContainsKey($ServiceName)) {
+        $logPath = $CustomLogs[$ServiceName]
+        if (Test-Path -LiteralPath $logPath) {
+            $recent = Get-Content -LiteralPath $logPath -Tail 800 -ErrorAction SilentlyContinue |
+                      Select-String -Pattern $pattern -SimpleMatch:$false
+            if ($recent) {
+                Write-Log -Level 'WARN' -Message "Errors found in custom log: $logPath"
+                return $true
+            }
         }
     }
 
     return $false
 }
 
-function Restart-WindowsService {
-    param(
-        [string]$Name
-    )
+function Restart-WindowsServiceSafe {
+    param([string]$Name)
 
     if ($DryRun) {
-        Write-Log "DRY-RUN" "Would restart service: $Name"
+        Write-Log -Level 'DRY-RUN' -Message "Would restart service: $Name"
         return
     }
 
-    Write-Log "INFO" "Restarting service: $Name"
-
     try {
         $svc = Get-Service -Name $Name -ErrorAction Stop
+        Write-Log -Level 'INFO' -Message "Restarting service: $Name (current status: $($svc.Status))"
 
         if ($svc.Status -eq 'Running') {
             Restart-Service -Name $Name -Force -ErrorAction Stop
@@ -146,18 +167,24 @@ function Restart-WindowsService {
             Start-Service -Name $Name -ErrorAction Stop
         }
 
-        Start-Sleep -Seconds 3
+        # Wait and verify
+        $timeout = 30
+        $elapsed = 0
+        do {
+            Start-Sleep -Seconds 2
+            $elapsed += 2
+            $svc.Refresh()
+        } while ($svc.Status -ne 'Running' -and $elapsed -lt $timeout)
 
-        $svc.Refresh()
         if ($svc.Status -eq 'Running') {
-            Write-Log "INFO" "$Name is running after restart"
+            Write-Log -Level 'INFO' -Message "$Name is Running after restart"
         }
         else {
-            Write-Log "WARN" "$Name did not reach Running state (current: $($svc.Status))"
+            Write-Log -Level 'WARN' -Message "$Name did not reach Running state (status: $($svc.Status))"
         }
     }
     catch {
-        Write-Log "ERROR" "Failed to restart $Name : $($_.Exception.Message)"
+        Write-Log -Level 'ERROR' -Message "Failed to restart '$Name': $($_.Exception.Message)"
     }
 }
 
@@ -165,57 +192,53 @@ function Restart-WindowsService {
 # Main
 # ------------------------------------------------------------
 
-Write-Log "INFO" "Starting application error recovery scan (lookback: ${Minutes}m)"
+Write-Log -Level 'INFO' -Message "Windows App Error Recovery starting (lookback = ${Minutes} min)"
 if ($DryRun) {
-    Write-Log "INFO" "Running in DRY-RUN mode – no changes will be made"
+    Write-Log -Level 'INFO' -Message 'DRY-RUN mode enabled – no services will be restarted'
 }
 
-$targets = if ($Service -and $Service.Count -gt 0) {
-    $Service
-} else {
-    $ServiceDeps.Keys
-}
-
+$targets = if ($Service -and $Service.Count -gt 0) { $Service } else { @($ServiceDeps.Keys) }
 $restarted = [System.Collections.Generic.List[string]]::new()
 
 foreach ($svcName in $targets) {
     if (-not $ServiceDeps.ContainsKey($svcName)) {
-        Write-Log "WARN" "Service '$svcName' is not defined in ServiceDeps – skipping"
+        Write-Log -Level 'WARN' -Message "Service '$svcName' is not defined in `$ServiceDeps – skipping"
         continue
     }
 
-    Write-Log "INFO" "Checking logs for: $svcName"
+    Write-Log -Level 'INFO' -Message "Checking: $svcName"
 
     if (Test-ServiceHasErrors -ServiceName $svcName -LookbackMinutes $Minutes) {
-        Write-Log "WARN" "Errors detected for $svcName"
+        Write-Log -Level 'WARN' -Message "Errors detected for $svcName – initiating recovery"
 
-        # Restart primary
-        Restart-WindowsService -Name $svcName
+        # Primary service
+        Restart-WindowsServiceSafe -Name $svcName
         $restarted.Add($svcName)
 
-        # Restart dependents
-        $deps = $ServiceDeps[$svcName]
-        foreach ($dep in $deps) {
+        # Dependents
+        foreach ($dep in $ServiceDeps[$svcName]) {
             if ([string]::IsNullOrWhiteSpace($dep)) { continue }
-            Write-Log "INFO" "Restarting dependent service of ${svcName}: $dep"
-            Restart-WindowsService -Name $dep
+            Write-Log -Level 'INFO' -Message "Restarting dependent: $dep"
+            Restart-WindowsServiceSafe -Name $dep
             $restarted.Add($dep)
         }
     }
     else {
-        Write-Log "INFO" "No recent errors found for $svcName"
+        Write-Log -Level 'INFO' -Message "No recent errors for $svcName"
     }
 }
 
-Write-Host ""
-Write-Log "INFO" "===== Recovery Summary ====="
+Write-Host ''
+Write-Log -Level 'INFO' -Message '===== Recovery Summary ====='
 if ($restarted.Count -eq 0) {
-    Write-Log "INFO" "No services required a restart"
+    Write-Log -Level 'INFO' -Message 'No services required a restart'
 }
 else {
-    Write-Log "INFO" "Services restarted: $($restarted -join ', ')"
+    Write-Log -Level 'INFO' -Message ("Services restarted: {0}" -f ($restarted -join ', '))
 }
 
 if ($DryRun) {
-    Write-Log "INFO" "Dry-run complete. Re-run without -DryRun to apply changes."
+    Write-Log -Level 'INFO' -Message 'Dry-run complete. Re-run without -DryRun to apply changes.'
 }
+
+exit 0
