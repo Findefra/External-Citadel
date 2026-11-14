@@ -11,6 +11,8 @@ Actionable playbooks for detecting, responding to, containing, and learning from
 | `visionline-incident-playbook.md` | Visionline (door lock) application server |
 | `freedompay-incident-playbook.md` | FreedomPay payment application server |
 | `servicenow-incident-playbook.md` | ServiceNow app server / MID server |
+| `workday-incident-playbook.md` | Workday integration / adapter / agent |
+| `dynamics-incident-playbook.md` | Microsoft Dynamics app server (AOS / batch) |
 
 ## Related Automation
 
