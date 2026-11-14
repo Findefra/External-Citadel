@@ -4,9 +4,9 @@
 **Owner:** Platform / Linux  
 **Related Services:** nginx, upstream application backends  
 **Related Recovery Scripts:**  
-- `Automation/recovery/ubuntu/web-app-recovery.sh` (includes nginx)  
-- `Automation/recovery/redhat/web-app-recovery.sh` (includes nginx)  
-- Application-specific recovery scripts that list nginx as a dependent  
+- `Automation/recovery/ubuntu/nginx-recovery.sh`  
+- `Automation/recovery/redhat/nginx-recovery.sh`  
+- `Automation/recovery/ubuntu/web-app-recovery.sh` / `redhat/web-app-recovery.sh` (include nginx as dependent)  
 
 ---
 
@@ -70,8 +70,8 @@
 
 | Option | When to use | How / Script | Risk |
 |--------|-------------|--------------|------|
-| Reload nginx | Config-only change, graceful | `nginx -s reload` or `systemctl reload nginx` | Low |
-| Restart nginx | Process issues, stuck workers | `web-app-recovery` scripts or `systemctl restart nginx` | Low–Medium |
+| Reload nginx | Config-only change, graceful | `nginx-recovery.sh` (default prefers reload after `nginx -t`) | Low |
+| Restart nginx | Process issues, stuck workers | `nginx-recovery.sh --force-restart` | Low–Medium |
 | Disable bad upstream / server block | Single bad backend | Temporary config change + reload | Medium |
 | Rollback config | Clear correlation with config change | Restore previous config + reload | Medium |
 | Scale / fix upstreams | Backend saturation or failure | App recovery scripts / scaling | Low–Medium |

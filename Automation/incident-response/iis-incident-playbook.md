@@ -4,8 +4,8 @@
 **Owner:** Platform / Windows  
 **Related Services:** W3SVC, WAS, application pools, site bindings  
 **Related Recovery Scripts:**  
-- `Automation/recovery/windows/web-app-recovery.ps1` (includes W3SVC / WAS)  
-- Application-specific Windows recovery scripts that depend on IIS  
+- `Automation/recovery/windows/iis-recovery.ps1`  
+- `Automation/recovery/windows/web-app-recovery.ps1` (also covers W3SVC / WAS)  
 
 ---
 
@@ -68,8 +68,8 @@
 
 | Option | When to use | How / Script | Risk |
 |--------|-------------|--------------|------|
-| Restart application pool | Single app pool unhealthy | IIS Manager / `Import-Module WebAdministration; Restart-WebAppPool` | Low |
-| Restart W3SVC / WAS | Broader IIS failure | `web-app-recovery.ps1` or `Restart-Service W3SVC, WAS` | Medium |
+| Restart application pool | Single app pool unhealthy | `iis-recovery.ps1 -AppPool "Name"` or `Restart-WebAppPool` | Low |
+| Restart W3SVC / WAS + pools | Broader IIS failure | `iis-recovery.ps1` | Medium |
 | Recycle app pool | Memory growth or stuck requests | Recycle-WebAppPool | Low |
 | Rollback application | Clear correlation with deploy | Deployment pipeline | Medium |
 | Revert IIS config | Bad configuration change | Backup / previous config | Medium |
