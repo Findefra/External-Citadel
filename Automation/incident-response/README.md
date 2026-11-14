@@ -13,6 +13,8 @@ Actionable playbooks for detecting, responding to, containing, and learning from
 | `servicenow-incident-playbook.md` | ServiceNow app server / MID server |
 | `workday-incident-playbook.md` | Workday integration / adapter / agent |
 | `dynamics-incident-playbook.md` | Microsoft Dynamics app server (AOS / batch) |
+| `iis-incident-playbook.md` | IIS (W3SVC / WAS / app pools) |
+| `nginx-incident-playbook.md` | Nginx reverse proxy / web server |
 
 ## Related Automation
 
