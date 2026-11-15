@@ -1,0 +1,29 @@
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: modernization
+  namespace: argocd
+spec:
+  description: Application modernization workloads (web, nginx, dotnet examples)
+  sourceRepos:
+    - "https://github.com/Findefra/External-Citadel.git"
+    - "https://github.com/Findefra/External-Citadel"
+  destinations:
+    - namespace: "dev-*"
+      server: https://kubernetes.default.svc
+    - namespace: "stage-*"
+      server: https://kubernetes.default.svc
+    - namespace: "prod-*"
+      server: https://kubernetes.default.svc
+    - namespace: "default"
+      server: https://kubernetes.default.svc
+  clusterResourceWhitelist:
+    - group: ""
+      kind: Namespace
+  namespaceResourceWhitelist:
+    - group: ""
+      kind: "*"
+    - group: "apps"
+      kind: "*"
+    - group: "networking.k8s.io"
+      kind: "*"

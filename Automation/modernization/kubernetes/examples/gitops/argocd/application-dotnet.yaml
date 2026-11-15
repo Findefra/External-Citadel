@@ -1,0 +1,21 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: dotnet-web
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: modernization
+  source:
+    repoURL: https://github.com/Findefra/External-Citadel.git
+    targetRevision: main
+    path: Automation/modernization/kubernetes/examples/deploy-dotnet
+    directory:
+      include: "{deployment.yaml,service.yaml}"
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: dev-dotnet
+  syncPolicy:
+    syncOptions:
+      - CreateNamespace=true

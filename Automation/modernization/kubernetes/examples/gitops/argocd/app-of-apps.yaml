@@ -1,0 +1,21 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: modernization-root
+  namespace: argocd
+spec:
+  project: modernization
+  source:
+    repoURL: https://github.com/Findefra/External-Citadel.git
+    targetRevision: main
+    path: Automation/modernization/kubernetes/examples/gitops/argocd
+    directory:
+      recurse: false
+      # Bootstrap Applications only (exclude this file if it causes recursion issues)
+      include: "application-*.yaml"
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: argocd
+  syncPolicy:
+    syncOptions:
+      - CreateNamespace=false

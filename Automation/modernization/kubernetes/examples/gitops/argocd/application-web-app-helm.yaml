@@ -1,0 +1,39 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: web-app
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: modernization
+  source:
+    repoURL: https://github.com/Findefra/External-Citadel.git
+    targetRevision: main
+    path: Automation/modernization/kubernetes/examples/helm/web-app
+    helm:
+      releaseName: web-app
+      values: |
+        replicaCount: 2
+        image:
+          repository: registry.example.com/web-api
+          tag: "CHANGEME"
+        service:
+          port: 80
+          targetPort: 8080
+        probes:
+          readiness:
+            path: /health/ready
+          liveness:
+            path: /health/live
+          startup:
+            enabled: true
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: dev-web
+  syncPolicy:
+    syncOptions:
+      - CreateNamespace=true
+    # automated:
+    #   prune: true
+    #   selfHeal: true

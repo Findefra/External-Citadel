@@ -1,0 +1,25 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: nginx-frontend
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: modernization
+  source:
+    repoURL: https://github.com/Findefra/External-Citadel.git
+    targetRevision: main
+    path: Automation/modernization/kubernetes/examples/nginx
+    directory:
+      recurse: false
+      include: "{ConfigMap-nginx.conf,deployment.yaml,service.yaml,ingress.yaml}"
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: dev-web
+  syncPolicy:
+    syncOptions:
+      - CreateNamespace=true
+    # automated:
+    #   prune: true
+    #   selfHeal: true
