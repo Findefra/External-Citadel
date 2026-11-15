@@ -1,0 +1,20 @@
+# Rename/copy to cloud.tf and replace placeholders.
+
+terraform {
+  cloud {
+    organization = "YOUR_ORG"
+
+    workspaces {
+      name = "YOUR_WORKSPACE"
+    }
+  }
+}
+
+# Terraform Enterprise:
+# terraform {
+#   cloud {
+#     hostname     = "tfe.example.com"
+#     organization = "YOUR_ORG"
+#     workspaces { name = "YOUR_WORKSPACE" }
+#   }
+# }
