@@ -9,7 +9,8 @@ recovery/
 ├── ubuntu/          # Ubuntu (systemd + journalctl)
 ├── redhat/          # RHEL / Rocky / Alma / CentOS Stream
 ├── windows/         # Windows Server (PowerShell + Event Log)
-└── kubernetes/      # Kubernetes (kubectl logs + rollout restart)
+├── kubernetes/      # Kubernetes (kubectl logs + rollout restart)
+└── azure/           # Azure App Service (.NET managed web apps)
 ```
 
 ## Applications Covered
@@ -24,15 +25,17 @@ recovery/
 | `dynamics-recovery` | Microsoft Dynamics (Finance & Operations / AX / 365) app server |
 | `iis-recovery` | IIS (W3SVC, WAS, application pools) – Windows |
 | `nginx-recovery` | Nginx reverse proxy / web server – Ubuntu & Red Hat |
+| `appservice-dotnet-recovery` | Azure App Service (.NET) – restart, instance restart, slot swap, diagnose |
 
 ## Common Features
 
 - Structured console + file logging (daily rotation)
 - Dry-run mode
-- Configurable lookback window
+- Configurable lookback window (host scripts) / explicit actions (Azure)
 - Restarts primary service and declared dependents
-- Platform-native tooling (systemctl / Get-Service / kubectl)
+- Platform-native tooling (systemctl / Get-Service / kubectl / Azure CLI)
 - Nginx scripts prefer graceful `reload` after `nginx -t` (use `--force-restart` for full restart)
+- Azure scripts support Status, Diagnose, Restart, RestartInstance, Swap
 
 ## Usage Pattern
 
@@ -40,15 +43,22 @@ recovery/
 # Linux
 sudo ./ubuntu/web-app-recovery.sh --dry-run
 sudo ./ubuntu/nginx-recovery.sh --minutes 20
-sudo ./redhat/nginx-recovery.sh --force-restart
 
 # Windows (elevated PowerShell)
-.\windows\web-app-recovery.ps1 -DryRun
-.\windows\iis-recovery.ps1 -Minutes 15
-.\windows\iis-recovery.ps1 -AppPool "MyWebAppPool","DefaultAppPool"
+.\windows\iis-recovery.ps1 -DryRun
 
 # Kubernetes
 ./kubernetes/web-app-recovery.sh --namespace production --dry-run
+
+# Azure App Service (.NET)
+./azure/appservice-dotnet-recovery.sh -g rg-prod-web -n my-dotnet-app --action diagnose
+./azure/appservice-dotnet-recovery.sh -g rg-prod-web -n my-dotnet-app --action restart
+./azure/appservice-dotnet-recovery.sh -g rg-prod-web -n my-dotnet-app --action swap --slot staging
 ```
 
-Edit the service / deployment / app pool names inside each script before using in production.
+```powershell
+.\azure\appservice-dotnet-recovery.ps1 -ResourceGroup rg-prod-web -WebAppName my-dotnet-app -Action Diagnose
+.\azure\appservice-dotnet-recovery.ps1 -ResourceGroup rg-prod-web -WebAppName my-dotnet-app -Action Swap -Slot staging
+```
+
+Edit resource names, services, and app pools inside each script before using in production.

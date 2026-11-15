@@ -15,10 +15,13 @@ Actionable playbooks for detecting, responding to, containing, and learning from
 | `dynamics-incident-playbook.md` | Microsoft Dynamics app server (AOS / batch) |
 | `iis-incident-playbook.md` | IIS (W3SVC / WAS / app pools) |
 | `nginx-incident-playbook.md` | Nginx reverse proxy / web server |
+| `azure-appservice-dotnet-incident-playbook.md` | Azure App Service (.NET managed web apps) |
 
 ## Related Automation
 
 Recovery scripts live in [`../recovery/`](../recovery/) and are referenced inside each service playbook under **Mitigation Options**.
+
+Azure managed web app scripts: [`../recovery/azure/`](../recovery/azure/)
 
 Chaos experiment runbooks live in [`../chaos/`](../chaos/).
 
