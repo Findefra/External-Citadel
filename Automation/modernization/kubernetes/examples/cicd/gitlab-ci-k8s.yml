@@ -1,0 +1,66 @@
+# Copy/merge into: .gitlab-ci.yml
+# Generic build → Trivy → push → kubectl deploy
+
+stages:
+  - build
+  - scan
+  - deploy
+
+variables:
+  IMAGE_NAME: web-api
+  IMAGE_TAG: $CI_COMMIT_SHORT_SHA
+  FULL_IMAGE: $CI_REGISTRY_IMAGE/$IMAGE_NAME:$IMAGE_TAG
+  K8S_NAMESPACE: default
+  DEPLOYMENT: web-api
+  CONTAINER: web-api
+
+build:
+  stage: build
+  image: docker:27
+  services:
+    - docker:27-dind
+  before_script:
+    - docker login -u "$CI_REGISTRY_USER" -p "$CI_REGISTRY_PASSWORD" "$CI_REGISTRY"
+  script:
+    - docker build -t "$FULL_IMAGE" -f Automation/modernization/kubernetes/examples/deploy-stateless-web/Dockerfile Automation/modernization/kubernetes/examples/deploy-stateless-web
+    - docker push "$FULL_IMAGE"
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+
+scan:
+  stage: scan
+  image:
+    name: aquasec/trivy:latest
+    entrypoint: [""]
+  script:
+    - trivy image --exit-code 1 --severity HIGH,CRITICAL --ignore-unfixed "$FULL_IMAGE"
+  needs: [build]
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+
+deploy:
+  stage: deploy
+  image: bitnami/kubectl:latest
+  needs: [scan]
+  script:
+    - kubectl config use-context "$KUBE_CONTEXT"
+    - kubectl apply -n "$K8S_NAMESPACE" -f Automation/modernization/kubernetes/examples/deploy-stateless-web/service.yaml
+    - kubectl apply -n "$K8S_NAMESPACE" -f Automation/modernization/kubernetes/examples/deploy-stateless-web/deployment.yaml
+    - kubectl set image deployment/$DEPLOYMENT $CONTAINER=$FULL_IMAGE -n "$K8S_NAMESPACE"
+    - kubectl rollout status deployment/$DEPLOYMENT -n "$K8S_NAMESPACE" --timeout=180s
+    - |
+      if [ -n "${HEALTH_URL:-}" ]; then
+        for i in 1 2 3 4 5; do
+          code=$(curl -sS -o /dev/null -w "%{http_code}" "$HEALTH_URL" || true)
+          echo "Attempt $i: HTTP $code"
+          [ "$code" = "200" ] && exit 0
+          sleep 15
+        done
+        exit 1
+      fi
+  environment:
+    name: production
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH

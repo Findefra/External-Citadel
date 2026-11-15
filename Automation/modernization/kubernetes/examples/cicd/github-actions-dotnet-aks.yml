@@ -1,0 +1,116 @@
+# Copy to: .github/workflows/dotnet-aks.yml
+# Build ASP.NET Core image, scan, push to ACR, deploy to AKS, optional health smoke test.
+
+name: dotnet-aks-deploy
+
+on:
+  push:
+    branches: [main, develop]
+  workflow_dispatch:
+
+env:
+  IMAGE_NAME: dotnet-web
+  ACR_NAME: ${{ vars.ACR_NAME }}
+  RESOURCE_GROUP: ${{ vars.AKS_RESOURCE_GROUP }}
+  CLUSTER_NAME: ${{ vars.AKS_CLUSTER_NAME }}
+  NAMESPACE: ${{ vars.K8S_NAMESPACE || 'default' }}
+  DEPLOYMENT: dotnet-web
+  CONTAINER: dotnet-web
+  HEALTH_URL: ${{ vars.HEALTH_URL }}
+
+jobs:
+  build-scan-push:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    outputs:
+      image: ${{ steps.meta.outputs.image }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Azure login (OIDC)
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: ACR login
+        run: az acr login --name "${{ env.ACR_NAME }}"
+
+      - name: Image metadata
+        id: meta
+        run: |
+          IMAGE="${{ env.ACR_NAME }}.azurecr.io/${{ env.IMAGE_NAME }}:${{ github.sha }}"
+          echo "image=$IMAGE" >> "$GITHUB_OUTPUT"
+
+      - name: Build image
+        run: |
+          docker build -t "${{ steps.meta.outputs.image }}" \
+            -f Automation/modernization/kubernetes/examples/deploy-dotnet/Dockerfile \
+            .
+
+      - name: Trivy vulnerability scan
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          image-ref: ${{ steps.meta.outputs.image }}
+          format: table
+          exit-code: "1"
+          severity: CRITICAL,HIGH
+          ignore-unfixed: true
+
+      - name: Push image
+        run: docker push "${{ steps.meta.outputs.image }}"
+
+  deploy:
+    needs: build-scan-push
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Azure login (OIDC)
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: AKS credentials
+        run: |
+          az aks get-credentials \
+            --resource-group "${{ env.RESOURCE_GROUP }}" \
+            --name "${{ env.CLUSTER_NAME }}" \
+            --overwrite-existing
+
+      - name: Deploy manifests (first time / baseline)
+        run: |
+          kubectl apply -n "${{ env.NAMESPACE }}" \
+            -f Automation/modernization/kubernetes/examples/deploy-dotnet/service.yaml
+          kubectl apply -n "${{ env.NAMESPACE }}" \
+            -f Automation/modernization/kubernetes/examples/deploy-dotnet/deployment.yaml
+
+      - name: Set image
+        run: |
+          kubectl set image deployment/${{ env.DEPLOYMENT }} \
+            ${{ env.CONTAINER }}=${{ needs.build-scan-push.outputs.image }} \
+            -n "${{ env.NAMESPACE }}"
+          kubectl rollout status deployment/${{ env.DEPLOYMENT }} -n "${{ env.NAMESPACE }}" --timeout=180s
+
+      - name: Smoke health check
+        if: ${{ env.HEALTH_URL != '' }}
+        run: |
+          for i in 1 2 3 4 5; do
+            code=$(curl -sS -o /dev/null -w "%{http_code}" "${{ env.HEALTH_URL }}" || true)
+            echo "Attempt $i: HTTP $code"
+            if [ "$code" = "200" ]; then exit 0; fi
+            sleep 15
+          done
+          echo "Health check failed"
+          exit 1
