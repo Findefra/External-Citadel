@@ -17,7 +17,9 @@ kubernetes/
     ├── helm/web-app/
     ├── common-app-migrations/
     ├── cicd/
-    └── gitops/argocd/          # Argo CD Applications + AppProject
+    └── gitops/
+        ├── argocd/           # Argo CD Applications + AppProject
+        └── argo-rollouts/    # Canary, blue-green, AnalysisTemplates
 ```
 
 ## Quick links
@@ -28,22 +30,15 @@ kubernetes/
 | AKS/EKS landing pointers | [`landing-zones/`](landing-zones/) |
 | Helm chart | [`examples/helm/web-app/`](examples/helm/web-app/) |
 | Nginx on K8s | [`examples/nginx/`](examples/nginx/) |
-| Common migration scenarios | [`examples/common-app-migrations/`](examples/common-app-migrations/) |
 | CI/CD | [`examples/cicd/`](examples/cicd/) |
 | **Argo CD GitOps** | [`examples/gitops/argocd/`](examples/gitops/argocd/) |
+| **Argo Rollouts** | [`examples/gitops/argo-rollouts/`](examples/gitops/argo-rollouts/) |
 
-## GitOps (Argo CD)
+## Progressive delivery (Argo Rollouts)
 
-Sample manifests:
-
-- `AppProject` (`project-modernization.yaml`)
-- Applications for **Helm web-app**, **nginx**, **dotnet**
-- **App of Apps** root
-- CI guidance: bump image tag in Git (`ci-bump-image-tag.md`)
-
-## CI/CD examples
-
-- ACR + AKS, ECR + EKS, Helm deploy, GitLab CI (see `examples/cicd/`)
+- AnalysisTemplates: Prometheus success rate + web `/health/ready`
+- **Canary** Rollout with step weights, pauses, and analysis
+- **Blue-green** Rollout with active/preview Services, manual promote, pre/post analysis
 
 ## Related repo paths
 
