@@ -7,54 +7,45 @@ Guidance, process, and examples for modernizing applications onto **Kubernetes**
 ```
 kubernetes/
 ├── README.md
-├── process/
-│   └── modernization-process.md
-├── application-types/
-│   ├── stateless-web-api.md
-│   ├── dotnet-appservice.md
-│   ├── background-workers.md
-│   ├── monolith-strangler.md
-│   └── windows-iis-legacy.md
+├── process/modernization-process.md
+├── application-types/          # per-app-type guides
+├── landing-zones/              # AKS/EKS pointers + checklist
 └── examples/
     ├── deploy-stateless-web/
     ├── deploy-dotnet/
-    └── cicd/
-        ├── README.md
-        ├── github-actions-dotnet-aks.yml
-        ├── github-actions-stateless-ecr-eks.yml
-        └── gitlab-ci-k8s.yml
+    ├── nginx/                  # ConfigMap, Deployment, Ingress, Helm values
+    ├── helm/web-app/           # Reusable Helm chart
+    ├── common-app-migrations/  # Strangler + scenario matrix
+    └── cicd/                   # GitHub Actions + GitLab CI (+ Helm deploy)
 ```
 
-## When Kubernetes is a fit
+## Quick links
 
-| Good fit | Often not first target |
-|----------|------------------------|
-| Stateless APIs and web frontends | COTS with no container support |
-| Microservices already loosely coupled | Desktop / heavy GUI apps |
-| Batch/workers that scale horizontally | Shared monolith with sticky sessions (until redesigned) |
-| Apps with clear health endpoints | Databases as primary in-cluster state |
+| Need | Path |
+|------|------|
+| Full process | [`process/modernization-process.md`](process/modernization-process.md) |
+| AKS/EKS landing pointers | [`landing-zones/`](landing-zones/) |
+| Helm chart | [`examples/helm/web-app/`](examples/helm/web-app/) |
+| Nginx on K8s | [`examples/nginx/`](examples/nginx/) |
+| Common migration scenarios | [`examples/common-app-migrations/`](examples/common-app-migrations/) |
+| CI/CD | [`examples/cicd/`](examples/cicd/) |
 
 ## CI/CD examples
 
-See [`examples/cicd/`](examples/cicd/) for:
-
-- **GitHub Actions** → ACR + AKS (.NET)
-- **GitHub Actions** → ECR + EKS (stateless)
-- **GitLab CI** → registry + kubectl deploy
-
-Pattern: build → Trivy scan → push → `kubectl set image` / rollout → optional `/health/ready` smoke test.
+- `github-actions-dotnet-aks.yml` — ACR + AKS
+- `github-actions-stateless-ecr-eks.yml` — ECR + EKS
+- `github-actions-helm-deploy.yml` — build + `helm upgrade --install`
+- `gitlab-ci-k8s.yml` — GitLab build/scan/deploy
 
 ## Related repo paths
 
 | Path | Use |
 |------|-----|
 | `Application/dotnet/healthchecks/` | `/health/live` + `/health/ready` |
-| `Automation/recovery/kubernetes/` | Runtime recovery scripts |
-| `Automation/migration/` | Cloud migration + post-cutover reports |
-| `Automation/incident-response/` | Service playbooks |
+| `Automation/recovery/kubernetes/` | Runtime recovery |
+| `Automation/recovery/*nginx*` | Node-level nginx recovery |
+| `Automation/migration/` | Cloud migration health reports |
 
 ## High-level phases
 
-1. Assess → 2. Containerize → 3. Platform map → 4. Observability → **5. CI/CD** → 6. Cutover → 7. Optimize
-
-Details: [`process/modernization-process.md`](process/modernization-process.md).
+1. Assess → 2. Containerize → 3. Platform map → 4. Observability → 5. CI/CD → 6. Cutover → 7. Optimize
