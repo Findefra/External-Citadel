@@ -1,0 +1,71 @@
+# Copy to: .github/workflows/helm-web-app.yml
+# Build image → Trivy → push → helm upgrade --install
+
+name: helm-web-app-deploy
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+env:
+  IMAGE_REPO: ${{ vars.IMAGE_REPO }}
+  NAMESPACE: ${{ vars.K8S_NAMESPACE || 'default' }}
+  RELEASE_NAME: web-app
+  HEALTH_URL: ${{ vars.HEALTH_URL }}
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build and push
+        run: |
+          echo "Configure registry login for your cloud, then:"
+          IMAGE="${{ env.IMAGE_REPO }}:${{ github.sha }}"
+          docker build -t "$IMAGE" \
+            -f Automation/modernization/kubernetes/examples/deploy-stateless-web/Dockerfile \
+            Automation/modernization/kubernetes/examples/deploy-stateless-web
+          # docker push "$IMAGE"
+          echo "IMAGE=$IMAGE" >> "$GITHUB_ENV"
+
+      - name: Trivy
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          image-ref: ${{ env.IMAGE }}
+          severity: CRITICAL,HIGH
+          exit-code: "1"
+          ignore-unfixed: true
+
+      - name: Setup kubectl / kubeconfig
+        run: |
+          echo "Use azure/login + aks get-credentials OR aws eks update-kubeconfig"
+
+      - name: Setup Helm
+        uses: azure/setup-helm@v4
+
+      - name: Helm upgrade
+        run: |
+          helm upgrade --install "${{ env.RELEASE_NAME }}" \
+            Automation/modernization/kubernetes/examples/helm/web-app \
+            --namespace "${{ env.NAMESPACE }}" --create-namespace \
+            --set image.repository="${{ env.IMAGE_REPO }}" \
+            --set image.tag="${{ github.sha }}" \
+            --wait --timeout 5m
+
+      - name: Smoke
+        if: ${{ env.HEALTH_URL != '' }}
+        run: |
+          for i in 1 2 3 4 5; do
+            code=$(curl -sS -o /dev/null -w "%{http_code}" "${{ env.HEALTH_URL }}" || true)
+            [ "$code" = "200" ] && exit 0
+            sleep 15
+          done
+          exit 1
