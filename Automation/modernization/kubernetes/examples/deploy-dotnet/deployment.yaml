@@ -1,0 +1,50 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: dotnet-web
+  labels:
+    app: dotnet-web
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: dotnet-web
+  template:
+    metadata:
+      labels:
+        app: dotnet-web
+    spec:
+      containers:
+        - name: dotnet-web
+          image: registry.example.com/dotnet-web:REPLACE_SHA
+          ports:
+            - containerPort: 8080
+              name: http
+          env:
+            - name: ASPNETCORE_ENVIRONMENT
+              value: Production
+            - name: ASPNETCORE_URLS
+              value: http://0.0.0.0:8080
+          startupProbe:
+            httpGet:
+              path: /health/live
+              port: http
+            failureThreshold: 30
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /health/ready
+              port: http
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /health/live
+              port: http
+            periodSeconds: 20
+          resources:
+            requests:
+              cpu: 250m
+              memory: 512Mi
+            limits:
+              cpu: "1"
+              memory: 1Gi
