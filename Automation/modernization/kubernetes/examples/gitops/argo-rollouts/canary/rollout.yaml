@@ -43,13 +43,11 @@ spec:
               memory: 512Mi
   strategy:
     canary:
-      # Without a traffic provider, weights are approximated via ReplicaSet scale.
-      canaryService: web-api-canary
-      stableService: web-api-canary
+      # Weights approximated by ReplicaSet scale unless a traffic provider is configured.
+      # For Ingress/mesh splitting, add distinct canaryService + stableService.
       analysis:
         templates:
           - templateName: web-health-ready
-          # Enable when Prometheus metrics exist for this service:
           # - templateName: prometheus-success-rate
         startingStep: 1
         args:
@@ -59,8 +57,6 @@ spec:
             valueFrom:
               fieldRef:
                 fieldPath: metadata.namespace
-          # - name: service-name
-          #   value: web-api-canary
       steps:
         - setWeight: 25
         - pause: { duration: 2m }
