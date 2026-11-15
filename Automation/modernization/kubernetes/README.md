@@ -8,15 +8,16 @@ Guidance, process, and examples for modernizing applications onto **Kubernetes**
 kubernetes/
 ├── README.md
 ├── process/modernization-process.md
-├── application-types/          # per-app-type guides
-├── landing-zones/              # AKS/EKS pointers + checklist
+├── application-types/
+├── landing-zones/
 └── examples/
     ├── deploy-stateless-web/
     ├── deploy-dotnet/
-    ├── nginx/                  # ConfigMap, Deployment, Ingress, Helm values
-    ├── helm/web-app/           # Reusable Helm chart
-    ├── common-app-migrations/  # Strangler + scenario matrix
-    └── cicd/                   # GitHub Actions + GitLab CI (+ Helm deploy)
+    ├── nginx/
+    ├── helm/web-app/
+    ├── common-app-migrations/
+    ├── cicd/
+    └── gitops/argocd/          # Argo CD Applications + AppProject
 ```
 
 ## Quick links
@@ -29,13 +30,20 @@ kubernetes/
 | Nginx on K8s | [`examples/nginx/`](examples/nginx/) |
 | Common migration scenarios | [`examples/common-app-migrations/`](examples/common-app-migrations/) |
 | CI/CD | [`examples/cicd/`](examples/cicd/) |
+| **Argo CD GitOps** | [`examples/gitops/argocd/`](examples/gitops/argocd/) |
+
+## GitOps (Argo CD)
+
+Sample manifests:
+
+- `AppProject` (`project-modernization.yaml`)
+- Applications for **Helm web-app**, **nginx**, **dotnet**
+- **App of Apps** root
+- CI guidance: bump image tag in Git (`ci-bump-image-tag.md`)
 
 ## CI/CD examples
 
-- `github-actions-dotnet-aks.yml` — ACR + AKS
-- `github-actions-stateless-ecr-eks.yml` — ECR + EKS
-- `github-actions-helm-deploy.yml` — build + `helm upgrade --install`
-- `gitlab-ci-k8s.yml` — GitLab build/scan/deploy
+- ACR + AKS, ECR + EKS, Helm deploy, GitLab CI (see `examples/cicd/`)
 
 ## Related repo paths
 
@@ -43,9 +51,8 @@ kubernetes/
 |------|-----|
 | `Application/dotnet/healthchecks/` | `/health/live` + `/health/ready` |
 | `Automation/recovery/kubernetes/` | Runtime recovery |
-| `Automation/recovery/*nginx*` | Node-level nginx recovery |
 | `Automation/migration/` | Cloud migration health reports |
 
 ## High-level phases
 
-1. Assess → 2. Containerize → 3. Platform map → 4. Observability → 5. CI/CD → 6. Cutover → 7. Optimize
+1. Assess → 2. Containerize → 3. Platform map → 4. Observability → 5. CI/CD / GitOps → 6. Cutover → 7. Optimize
