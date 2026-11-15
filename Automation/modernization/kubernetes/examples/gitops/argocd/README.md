@@ -12,6 +12,7 @@ Sample **Argo CD Application** manifests for the modernization examples in this 
 | `app-of-apps.yaml` | Root app that can point at a folder of Applications |
 | `project-modernization.yaml` | Example AppProject boundaries |
 | `ci-bump-image-tag.md` | How CI should update image tags in Git (not live kubectl) |
+| `sync-waves.md` | Short guide to `argocd.argoproj.io/sync-wave` + hooks |
 
 ## Prerequisites
 
@@ -22,13 +23,9 @@ Sample **Argo CD Application** manifests for the modernization examples in this 
 ## Apply (bootstrap)
 
 ```bash
-# From a machine authenticated to the cluster hosting Argo CD
 kubectl apply -f project-modernization.yaml
 kubectl apply -f application-web-app-helm.yaml
 kubectl apply -f application-nginx.yaml
-# Optional:
-# kubectl apply -f application-dotnet.yaml
-# kubectl apply -f app-of-apps.yaml
 ```
 
 Replace `repoURL`, image parameters, and namespaces before production use.
@@ -37,5 +34,7 @@ Replace `repoURL`, image parameters, and namespaces before production use.
 
 - Chart: `../../helm/web-app/`
 - Nginx: `../../nginx/`
-- CI (build/scan/push): `../../cicd/`
+- CI: `../../cicd/`
+- Rollouts: `../argo-rollouts/`
 - Landing zones: `../../../landing-zones/`
+- Sync order: [`sync-waves.md`](sync-waves.md)
