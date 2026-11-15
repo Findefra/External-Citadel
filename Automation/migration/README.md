@@ -8,55 +8,44 @@ Scripts and assessments for **migrations into AWS, Azure, and GCP** using each p
 migration/
 ├── README.md
 ├── aws/
-│   ├── post-migration-health-check.sh
-│   └── README.md
 ├── azure/
-│   ├── post-migration-health-check.sh
-│   ├── post-migration-health-check.ps1
-│   └── README.md
 ├── gcp/
-│   ├── post-migration-health-check.sh
-│   └── README.md
-└── reports/                    # default output directory (gitignored samples OK)
-    └── .gitkeep
+├── terraform/                  # HCP backend examples, MGN prereqs module, validate wrapper
+│   ├── hcp-backend/
+│   ├── modules/aws-mgn-prereqs/
+│   └── validate/
+└── reports/
 ```
 
 ## Native services (by provider)
 
 | Cloud | Migration-oriented native services | Post-migration health focus |
 |-------|------------------------------------|-----------------------------|
-| **AWS** | Application Migration Service (MGN), DMS, Migration Hub, Elastic Disaster Recovery | EC2/ASG state, ELB targets, RDS, CloudWatch alarms |
-| **Azure** | Azure Migrate, Azure Site Recovery, Azure Database Migration Service | VM power/agent, App Service, SQL, Azure Monitor activity |
-| **GCP** | Migrate to VMs, Database Migration Service, Transfer services | GCE instance status, MIG, Cloud SQL, Cloud Monitoring |
+| **AWS** | Application Migration Service (MGN), DMS, Migration Hub | EC2/ASG state, ELB targets, RDS, CloudWatch alarms |
+| **Azure** | Azure Migrate, Azure Site Recovery, Azure DMS | VM power, App Service, SQL, activity log |
+| **GCP** | Migrate to VMs, Database Migration Service | GCE, MIG, Cloud SQL |
 
-These scripts do **not** replace full Azure Migrate / MGN / Migrate to VMs projects. They automate **readiness-style and post-cutover health assessment** and write **reports** you can attach to change records.
+## Terraform scaffold
+
+See [`terraform/README.md`](terraform/README.md) for:
+
+- HCP Terraform / TFE `cloud {}` backend migration snippets + runbook
+- Thin **AWS MGN prerequisites** module
+- **`validate/post-apply-validate.sh`** wrapper around the health-check scripts
 
 ## Post-migration report
 
-Each health-check script writes:
-
-- Markdown report: `reports/<cloud>-post-migration-<timestamp>.md`
-- JSON summary: `reports/<cloud>-post-migration-<timestamp>.json`
-
-Exit codes: `0` = all critical checks passed, `1` = one or more critical failures, `2` = tool/config error.
-
-## Prerequisites
-
-- **AWS:** AWS CLI v2, credentials/profile with read access to EC2, ELB, RDS, CloudWatch
-- **Azure:** Azure CLI (`az login`), subscription access to Compute, Web, SQL, Monitor
-- **GCP:** `gcloud` CLI, project configured, roles for compute/sql/monitoring viewer
+- Markdown: `reports/<cloud>-post-migration-<timestamp>.md`
+- JSON: `reports/<cloud>-post-migration-<timestamp>.json`
+- Exit: `0` pass · `1` critical fail · `2` tool/config error
 
 ## Quick start
 
 ```bash
-# AWS
 ./aws/post-migration-health-check.sh --region us-east-1 --report-dir ./reports
-
-# Azure
-./azure/post-migration-health-check.sh --resource-group rg-migrated-prod --report-dir ./reports
-
-# GCP
+./azure/post-migration-health-check.sh -g rg-migrated-prod --report-dir ./reports
 ./gcp/post-migration-health-check.sh --project my-proj --zone us-central1-a --report-dir ./reports
-```
 
-Review the generated Markdown report before closing the migration change window.
+# After Terraform apply / cutover
+./terraform/validate/post-apply-validate.sh --cloud aws --region us-east-1
+```
