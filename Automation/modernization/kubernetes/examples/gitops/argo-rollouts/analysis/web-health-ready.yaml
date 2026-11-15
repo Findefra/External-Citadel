@@ -1,0 +1,21 @@
+apiVersion: argoproj.io/v1alpha1
+kind: AnalysisTemplate
+metadata:
+  name: web-health-ready
+spec:
+  args:
+    - name: service-name
+    - name: namespace
+    - name: path
+      value: /health/ready
+  metrics:
+    - name: health-ready
+      interval: 10s
+      count: 3
+      failureLimit: 1
+      successCondition: result.code >= 200 && result.code < 300
+      provider:
+        web:
+          method: GET
+          timeoutSeconds: 10
+          url: "http://{{args.service-name}}.{{args.namespace}}.svc.cluster.local{{args.path}}"

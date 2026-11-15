@@ -1,0 +1,79 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Rollout
+metadata:
+  name: web-api-canary
+spec:
+  replicas: 4
+  revisionHistoryLimit: 2
+  selector:
+    matchLabels:
+      app: web-api-canary
+  template:
+    metadata:
+      labels:
+        app: web-api-canary
+    spec:
+      containers:
+        - name: web-api
+          image: registry.example.com/web-api:CHANGEME
+          ports:
+            - name: http
+              containerPort: 8080
+          env:
+            - name: ASPNETCORE_URLS
+              value: http://0.0.0.0:8080
+          readinessProbe:
+            httpGet:
+              path: /health/ready
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /health/live
+              port: http
+            initialDelaySeconds: 15
+            periodSeconds: 20
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: "1"
+              memory: 512Mi
+  strategy:
+    canary:
+      # Without a traffic provider, weights are approximated via ReplicaSet scale.
+      canaryService: web-api-canary
+      stableService: web-api-canary
+      analysis:
+        templates:
+          - templateName: web-health-ready
+          # Enable when Prometheus metrics exist for this service:
+          # - templateName: prometheus-success-rate
+        startingStep: 1
+        args:
+          - name: service-name
+            value: web-api-canary
+          - name: namespace
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.namespace
+          # - name: service-name
+          #   value: web-api-canary
+      steps:
+        - setWeight: 25
+        - pause: { duration: 2m }
+        - analysis:
+            templates:
+              - templateName: web-health-ready
+            args:
+              - name: service-name
+                value: web-api-canary
+              - name: namespace
+                valueFrom:
+                  fieldRef:
+                    fieldPath: metadata.namespace
+        - setWeight: 50
+        - pause: { duration: 2m }
+        - setWeight: 100

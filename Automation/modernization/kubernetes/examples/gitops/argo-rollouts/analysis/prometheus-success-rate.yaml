@@ -1,0 +1,25 @@
+apiVersion: argoproj.io/v1alpha1
+kind: AnalysisTemplate
+metadata:
+  name: prometheus-success-rate
+spec:
+  args:
+    - name: service-name
+    - name: prometheus-address
+      value: http://prometheus-operated.monitoring.svc.cluster.local:9090
+  metrics:
+    - name: success-rate
+      interval: 1m
+      count: 3
+      failureLimit: 1
+      initialDelay: 30s
+      # Prometheus instant queries return a vector — use result[0]
+      successCondition: result[0] >= 0.95
+      provider:
+        prometheus:
+          address: "{{args.prometheus-address}}"
+          timeout: 30
+          query: |
+            sum(rate(http_requests_total{service="{{args.service-name}}",code!~"5.."}[2m]))
+            /
+            sum(rate(http_requests_total{service="{{args.service-name}}"}[2m]))
